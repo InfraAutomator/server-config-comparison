@@ -90,29 +90,28 @@ jobs:
           chmod 600 ~/.aws/credentials
         shell: bash
 
-      - name: Set Up SSH Private Key (For GitHub Runner Only)
+      - name: Set Up SSH Key
         run: |
           mkdir -p ~/.ssh
-          cp scripts/private_key.pem ~/.ssh/private_key.pem
-          chmod 600 ~/.ssh/private_key.pem
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/private_key.pem
+          chmod 700 ~/.ssh
+          cp scripts/private_key.pem ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          touch ~/.ssh/known_hosts
+
+          # Add all EC2 servers to known_hosts dynamically
+          while read -r server; do
+            echo "Adding $server to known_hosts"
+            ssh-keyscan -H "$server" >> ~/.ssh/known_hosts
+          done < scripts/serverlist.txt
         shell: bash
 
-      - name: Run Remote Command on EC2
+      - name: Execute Command on EC2 Servers
         run: |
           while read -r server; do
             echo "Executing command on $server"
-            ssh -o StrictHostKeyChecking=no ubuntu@$server "bash -s" < scripts/command.sh
+            ssh -i ~/.ssh/id_rsa ubuntu@"$server" "bash -s" < scripts/command.sh
           done < scripts/serverlist.txt
-        shell: bash
-
-      - name: Download Output from EC2
-        run: |
-          while read -r server; do
-            scp -o StrictHostKeyChecking=no ubuntu@$server:/home/ubuntu/output.txt ./output_$server.txt
-          done < scripts/serverlist.txt
-        shell: bash
+        shell: bashh
 
       - name: Upload Output to S3
         run: |
