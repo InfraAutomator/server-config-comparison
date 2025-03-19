@@ -14,10 +14,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install AWS CLI & jq
+      - name: Update AWS CLI (Non-Interactive)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y awscli jq
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -o awscliv2.zip   # Force overwrite without prompt
+          sudo ./aws/install --update
+          aws --version
 
       - name: Configure AWS CLI Profile
         run: bash scripts/aws-profile-setup.sh
@@ -25,8 +27,9 @@ jobs:
       - name: Get EC2 Public IPs
         run: |
           instance_ids=$(cat serverlist.txt)
-          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --profile default)
+          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --region us-east-1)
           echo "PUBLIC_IPS=$public_ips" >> $GITHUB_ENV
+        shell: bash
 
       - name: Set up SSH Key for EC2 Access
         run: |
