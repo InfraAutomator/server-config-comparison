@@ -13,15 +13,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up AWS CLI Profile
+      - name: Update AWS CLI
         run: |
-          mkdir -p ~/.aws
-          echo "[default]" > ~/.aws/credentials
-          echo "aws_access_key_id = YOUR_ACCESS_KEY" >> ~/.aws/credentials
-          echo "aws_secret_access_key = YOUR_SECRET_KEY" >> ~/.aws/credentials
-          echo "[default]" > ~/.aws/config
-          echo "region = us-east-1" >> ~/.aws/config
-          chmod 600 ~/.aws/credentials
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
 
       - name: Install AWS CLI v2
         run: |
