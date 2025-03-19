@@ -64,23 +64,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install SSH Client & AWS CLI
+      - name: Install SSH Client & AWS CLI (If Not Installed)
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client unzip
 
-          # Remove existing AWS CLI if present
-          if command -v aws &> /dev/null; then
-            sudo rm -rf /usr/local/aws-cli
-            sudo rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
+          # Check if AWS CLI is installed
+          if ! command -v aws &> /dev/null; then
+            echo "AWS CLI not found. Installing now..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -o awscliv2.zip
+            sudo ./aws/install
+          else
+            echo "AWS CLI is already installed. Skipping installation."
           fi
 
-          # Download and install AWS CLI
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -o awscliv2.zip
-          sudo ./aws/install --update
-
-          # Verify installation
+          # Verify AWS CLI version
           aws --version
         shell: bash
 
