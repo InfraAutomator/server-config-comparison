@@ -26,13 +26,13 @@ jobs:
           unzip -o awscliv2.zip   # Force overwrite without prompt
           sudo ./aws/install --update
           aws --version
-          
-      - name: Get Instance Public IPs
-        id: get-ec2-ips
+
+      - name: Get EC2 Public IPs
         run: |
           instance_ids=$(cat serverlist.txt)
-          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
+          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --region us-east-1)
           echo "PUBLIC_IPS=$public_ips" >> $GITHUB_ENV
+        shell: /usr/bin/bash
 
       - name: Set up SSH Key for EC2 Access
         run: |
