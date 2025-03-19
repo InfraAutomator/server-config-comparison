@@ -111,7 +111,7 @@ jobs:
             echo "Executing command on $server"
             ssh -i ~/.ssh/id_rsa ubuntu@"$server" "bash -s" < scripts/command.sh
           done < scripts/serverlist.txt
-        shell: bashh
+        shell: bash
 
       - name: Upload Output to S3
         run: |
