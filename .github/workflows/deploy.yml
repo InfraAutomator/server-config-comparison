@@ -7,13 +7,17 @@ on:
 
 jobs:
   ssh-execution:
-    runs-on: windows-latest # Required for PowerShell & Plink
+    runs-on: ubuntu-latest # Using Ubuntu to run Bash scripts
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install PuTTY
+      - name: Configure AWS Credentials
+        run: bash scripts/aws-profile-setup.sh
+
+      - name: Install PuTTY on Windows Runner
+        if: runner.os == 'Windows'
         run: |
           choco install putty -y
         shell: pwsh
@@ -21,12 +25,14 @@ jobs:
       - name: Run PowerShell SSH Script
         shell: pwsh
         run: pwsh scripts/fetch-config.ps1
-        env:
-          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
 
-      - name: Upload Output Files
-        uses: actions/upload-artifact@v3
+      - name: Upload Output Files to S3
+        run: |
+          aws s3 cp scripts/ s3://os-comparison-bucket/ --recursive
+        shell: bash
+
+      - name: Upload Output Files as Artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: ssh-output
           path: scripts/*-output.txt
