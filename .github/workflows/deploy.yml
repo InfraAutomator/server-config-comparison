@@ -1,43 +1,45 @@
-name: EC2 Remote Execution & AWS Upload
+name: Execute Command on EC2
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:  # Manual trigger option
 
 jobs:
-  execute-on-ec2:
-    runs-on: windows-latest  # Use Windows runner for PowerShell compatibility
+  run-on-ec2:
+    runs-on: ubuntu-latest  # GitHub-hosted Ubuntu runner
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set Up AWS Credentials
+      - name: Set Up SSH
         run: |
-          mkdir -p $HOME\.aws
-          cp scripts/aws-credentials.txt $HOME\.aws\credentials
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
         shell: bash
 
-      - name: Install AWS CLI
+      - name: Configure AWS Credentials
         run: |
-          Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile "AWSCLIV2.msi"
-          Start-Process msiexec.exe -ArgumentList '/i AWSCLIV2.msi /quiet /norestart' -Wait
-        shell: pwsh
+          mkdir -p ~/.aws
+          cp scripts/aws-credentials.txt ~/.aws/credentials
+        shell: bash
 
-      - name: Install PuTTY (Plink)
+      - name: Add SSH Private Key
         run: |
-          choco install putty -y
-        shell: pwsh
+          mkdir -p ~/.ssh
+          cp scripts/aws-key.pem ~/.ssh/aws-key.pem
+          chmod 600 ~/.ssh/aws-key.pem
+        shell: bash
 
-      - name: Execute PowerShell Script on EC2
+      - name: Execute PowerShell Script
         run: pwsh scripts/fetch-config.ps1
         shell: pwsh
 
-      - name: Upload Output Files to S3
+      - name: Upload Output to S3
         run: |
-          aws s3 cp output s3:/os-comparison-bucket/ --recursive
+          aws s3 cp output s3://os-comparison-bucket/ --recursive
         shell: bash
 
       - name: Trigger AWS Lambda for Comparison
