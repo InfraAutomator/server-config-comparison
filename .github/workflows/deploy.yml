@@ -32,7 +32,7 @@ jobs:
           instance_ids=$(cat serverlist.txt)
           public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --region us-east-1)
           echo "PUBLIC_IPS=$public_ips" >> $GITHUB_ENV
-        shell: /usr/bin/bash
+        shell: bash
 
       - name: Set up SSH Key for EC2 Access
         run: |
