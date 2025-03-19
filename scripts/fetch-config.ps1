@@ -20,7 +20,7 @@ foreach ($server in $serverList) {
     $outputFile = "output/$server-output.txt"
     
     # Run command.sh on EC2 machine
-    ssh -i $pemKey -o StrictHostKeyChecking=no $sshUser@$server 'bash -s' < scripts/command.sh | Out-File -FilePath $outputFile
+    Invoke-Expression "ssh -i $pemKey -o StrictHostKeyChecking=no $sshUser@$server 'bash -s' | Out-File -FilePath $outputFile" -InputObject (Get-Content "scripts/command.sh")
     
     Write-Host "Output saved to $outputFile"
 }

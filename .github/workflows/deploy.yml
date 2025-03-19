@@ -1,45 +1,109 @@
+# name: Execute Command on EC2
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   workflow_dispatch: # Allows manual triggering
+
+# jobs:
+#   run-on-ec2:
+#     runs-on: ubuntu-latest # Uses GitHub-hosted Ubuntu runner
+
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+
+#       - name: Install SSH Client & AWS CLI
+#         run: |
+#           sudo apt-get update
+#           sudo apt-get install -y openssh-client awscli
+#         shell: bash
+
+#       - name: Configure AWS Credentials
+#         run: |
+#           mkdir -p ~/.aws
+#           cp scripts/aws-credentials.txt ~/.aws/credentials
+#           chmod 600 ~/.aws/credentials
+#         shell: bash
+
+#       - name: Set Up SSH Private Key
+#         run: |
+#           mkdir -p ~/.ssh
+#           cp scripts/private_key.pem ~/.ssh/private_key.pem
+#           chmod 600 ~/.ssh/private_key.pem
+#         shell: bash
+
+#       - name: Execute PowerShell Script
+#         run: pwsh scripts/fetch-config.ps1
+#         shell: pwsh
+
+#       - name: Upload Output to S3
+#         run: |
+#           aws s3 cp output s3://os-comparison-bucket/ --recursive
+#         shell: bash
+
+#       - name: Trigger AWS Lambda for Comparison
+#         run: |
+#           aws lambda invoke --function-name comparefiles --payload '{}' response.json
+#         shell: bash
+
 name: Execute Command on EC2
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Manual trigger option
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
   run-on-ec2:
-    runs-on: ubuntu-latest  # GitHub-hosted Ubuntu runner
+    runs-on: ubuntu-latest # GitHub-hosted runner
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set Up SSH
+      - name: Install SSH Client & AWS CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y openssh-client
+          sudo apt-get install -y openssh-client awscli
         shell: bash
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (For GitHub Runner Only)
         run: |
           mkdir -p ~/.aws
           cp scripts/aws-credentials.txt ~/.aws/credentials
+          chmod 600 ~/.aws/credentials
         shell: bash
 
-      - name: Add SSH Private Key
+      - name: Set Up SSH Private Key (For GitHub Runner Only)
         run: |
           mkdir -p ~/.ssh
-          cp scripts/aws-key.pem ~/.ssh/aws-key.pem
-          chmod 600 ~/.ssh/aws-key.pem
+          cp scripts/private_key.pem ~/.ssh/private_key.pem
+          chmod 600 ~/.ssh/private_key.pem
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/private_key.pem
         shell: bash
 
-      - name: Execute PowerShell Script
-        run: pwsh scripts/fetch-config.ps1
-        shell: pwsh
+      - name: Run Remote Command on EC2
+        run: |
+          while read -r server; do
+            echo "Executing command on $server"
+            ssh -o StrictHostKeyChecking=no ubuntu@$server "bash -s" < scripts/command.sh
+          done < scripts/serverlist.txt
+        shell: bash
+
+      - name: Download Output from EC2
+        run: |
+          while read -r server; do
+            scp -o StrictHostKeyChecking=no ubuntu@$server:/home/ubuntu/output.txt ./output_$server.txt
+          done < scripts/serverlist.txt
+        shell: bash
 
       - name: Upload Output to S3
         run: |
-          aws s3 cp output s3://os-comparison-bucket/ --recursive
+          aws s3 cp . s3://os-comparison-bucket/ --recursive --exclude "*" --include "output_*.txt"
         shell: bash
 
       - name: Trigger AWS Lambda for Comparison
