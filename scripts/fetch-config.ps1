@@ -1,16 +1,19 @@
-# Define paths
-$plink = 'C:\Users\m.vikrant.tagunde\PuTTY\plink.exe'
-$remoteserver = Get-Content "C:\Users\m.vikrant.tagunde\PuTTY\serverlist.txt"
-$user = Read-Host "Username"
-$pass = Read-Host "Password"
-$cmd = "C:\Users\m.vikrant.tagunde\PuTTY\command.sh"
+# Define parameters
+$instances = Get-Content "serverlist.txt"
+$command = "sh /home/ec2-user/command.sh"  # Remote script to run on EC2
+$awsProfile = "default"  # AWS CLI profile to use
+$region = "us-east-1"  # Change to your AWS region
 
-# Loop through each server and execute the command
-foreach ($srv in $remoteserver) {
-    Write-Host "Running task on $srv..."
+# Loop through each instance
+foreach ($instance in $instances) {
+    Write-Host "Executing command on instance: $instance"
     
-    # Execute the remote script using Plink and save output
-    Write-Output y | & $plink -ssh $srv -P 22 -l $user -pw $pass -m $cmd | Out-File -FilePath ".\$srv.txt"
-    
-    Write-Host "Configuration details saved in $srv.txt"
+    $response = aws ssm send-command `
+        --document-name "AWS-RunShellScript" `
+        --targets "[{\"Key\":\"InstanceIds\",\"Values\":[\"$instance\"]}]" `
+        --parameters "{\"commands\":[\"$command\"]}" `
+        --region $region `
+        --profile $awsProfile
+
+    Write-Host "Command sent successfully to $instance!"
 }
