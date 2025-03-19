@@ -1,38 +1,46 @@
-name: AWS EC2 SSH Execution
+name: EC2 Remote Execution & AWS Upload
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  ssh-execution:
-    runs-on: ubuntu-latest # Using Ubuntu to run Bash scripts
+  execute-on-ec2:
+    runs-on: windows-latest  # Use Windows runner for PowerShell compatibility
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        run: bash scripts/aws-profile-setup.sh
+      - name: Set Up AWS Credentials
+        run: |
+          mkdir -p $HOME\.aws
+          cp scripts/aws-credentials.txt $HOME\.aws\credentials
+        shell: bash
 
-      - name: Install PuTTY on Windows Runner
-        if: runner.os == 'Windows'
+      - name: Install AWS CLI
+        run: |
+          Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile "AWSCLIV2.msi"
+          Start-Process msiexec.exe -ArgumentList '/i AWSCLIV2.msi /quiet /norestart' -Wait
+        shell: pwsh
+
+      - name: Install PuTTY (Plink)
         run: |
           choco install putty -y
         shell: pwsh
 
-      - name: Run PowerShell SSH Script
-        shell: pwsh
+      - name: Execute PowerShell Script on EC2
         run: pwsh scripts/fetch-config.ps1
+        shell: pwsh
 
       - name: Upload Output Files to S3
         run: |
-          aws s3 cp scripts/ s3://os-comparison-bucket/ --recursive
+          aws s3 cp output s3:/os-comparison-bucket/ --recursive
         shell: bash
 
-      - name: Upload Output Files as Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-output
-          path: scripts/*-output.txt
+      - name: Trigger AWS Lambda for Comparison
+        run: |
+          aws lambda invoke --function-name comparefiles --payload '{}' response.json
+        shell: bash
