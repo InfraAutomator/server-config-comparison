@@ -113,9 +113,17 @@ jobs:
           done < scripts/serverlist.txt
         shell: bash
 
+      # - name: Upload Output to S3
+      #   run: |
+      #     aws s3 cp . s3://os-comparison-bucket/ --recursive --exclude "*" --include "output_*.txt"
+      #   shell: bash
       - name: Upload Output to S3
         run: |
-          aws s3 cp . s3://os-comparison-bucket/ --recursive --exclude "*" --include "output_*.txt"
+          while read -r server; do
+            echo "Uploading output from $server to S3"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@"$server":/tmp/system_info.txt ./"$server"_system_info.txt
+            aws s3 cp ./"$server"_system_info.txt s3://os-comparison-bucket/
+          done < scripts/serverlist.txt
         shell: bash
 
       - name: Trigger AWS Lambda for Comparison
