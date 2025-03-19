@@ -109,7 +109,7 @@ jobs:
         run: |
           while read -r server; do
             echo "Executing command on $server"
-            ssh -i ~/.ssh/id_rsa ubuntu@"$server" "bash -s" < scripts/command.sh
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@"$server" "bash -s" < scripts/command.sh
           done < scripts/serverlist.txt
         shell: bash
 
