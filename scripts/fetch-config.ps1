@@ -1,39 +1,45 @@
-# Define paths
-$scriptRoot = "$PSScriptRoot"
-$plink = "C:\Program Files\PuTTY\plink.exe"
-$serverListFile = "$scriptRoot\scripts\serverlist.txt"
-$commandFile = "$scriptRoot\scripts\command.sh"
-$credentialsFile = "$scriptRoot\scripts\aws-credentials.txt"
+# Define Paths
+$plink = "C:\Users\m.vikrant.tagunde\PuTTY\plink.exe"
+$serverListPath = "scripts/serverlist.txt"
+$commandPath = "scripts/command.sh"
+$outputDir = "output"
+$usePasswordAuth = $false  # Set to $true to use password authentication
 
-# Read credentials from file
-if (-not (Test-Path $credentialsFile)) {
-    Write-Host "Error: aws-credentials.txt not found!"
-    exit 1
+# Ask for credentials
+$user = Read-Host "Enter SSH Username"
+
+# Authentication Method
+if ($usePasswordAuth) {
+    $pass = Read-Host "Enter SSH Password" -AsSecureString
+    $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($pass)
+    )
+} else {
+    $pemKeyPath = Read-Host "\private_key.pem"
 }
 
-$credentials = Get-Content $credentialsFile | ConvertFrom-Csv -Delimiter ","
-$user = $credentials.Username
-$pass = $credentials.Password
-
-# Validate files
-if (-not (Test-Path $serverListFile)) {
-    Write-Host "Error: serverlist.txt not found!"
-    exit 1
+# Create output directory if it doesn't exist
+if (!(Test-Path -Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 
-if (-not (Test-Path $commandFile)) {
-    Write-Host "Error: command.sh not found!"
-    exit 1
-}
-
-# Read server list
-$servers = Get-Content $serverListFile
+# Read Server List
+$servers = Get-Content $serverListPath
 
 foreach ($server in $servers) {
-    Write-Host "Running task on $server..."
-
-    # Execute command using Plink and store output
-    Write-Output y | & $plink -ssh $server -P 22 -l $user -pw $pass -m $commandFile | Out-File -FilePath "$scriptRoot\$server-output.txt"
-
-    Write-Host "Output saved in: $scriptRoot\$server-output.txt"
+    Write-Host "Connecting to $server..."
+    
+    $outputFile = "$outputDir\$server.txt"
+    
+    if ($usePasswordAuth) {
+        # Use Password Authentication
+        Write-Output y | & $plink -ssh $server -P 22 -l $user -pw $plainPass -m $commandPath | Out-File -FilePath $outputFile
+    } else {
+        # Use Private Key Authentication
+        Write-Output y | & $plink -ssh $server -P 22 -i $pemKeyPath -l $user -m $commandPath | Out-File -FilePath $outputFile
+    }
+    
+    Write-Host "Output saved in $outputFile"
 }
+
+Write-Host "✅ All commands executed successfully!"
