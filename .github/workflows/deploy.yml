@@ -1,38 +1,32 @@
-name: EC2 Automation Workflow
+name: AWS EC2 Automation
 
 on:
   push:
     branches:
-      - main # Change this based on your repo branch
+      - main
+  workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  automate-ec2:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Update AWS CLI
+      - name: Install AWS CLI & jq
         run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
+          sudo apt-get update
+          sudo apt-get install -y awscli jq
 
-      - name: Update AWS CLI (Non-Interactive)
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -o awscliv2.zip   # Force overwrite without prompt
-          sudo ./aws/install --update
-          aws --version
+      - name: Configure AWS CLI Profile
+        run: bash scripts/aws-profile-setup.sh
 
       - name: Get EC2 Public IPs
         run: |
           instance_ids=$(cat serverlist.txt)
-          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --region us-east-1)
+          public_ips=$(aws ec2 describe-instances --instance-ids $instance_ids --query "Reservations[*].Instances[*].PublicIpAddress" --output text --profile default)
           echo "PUBLIC_IPS=$public_ips" >> $GITHUB_ENV
-        shell: bash
 
       - name: Set up SSH Key for EC2 Access
         run: |
@@ -42,17 +36,11 @@ jobs:
       - name: Execute PowerShell Script on EC2
         run: |
           for ip in $PUBLIC_IPS; do
-            ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@$ip "pwsh -File /home/ec2-user/fetch-config.ps1"
+            ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$ip "powershell -File ~/fetch-config.ps1"
           done
 
       - name: Upload Output to S3
         run: |
           for ip in $PUBLIC_IPS; do
-            scp -i private_key.pem ec2-user@$ip:/home/ec2-user/output.txt ./output_$ip.txt
-            aws s3 cp ./output_$ip.txt s3://os-comparison-bucket/output_$ip.txt
+            ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$ip "aws s3 cp ~/output.txt s3://os-comparison-bucket/output-$ip.txt --profile my-profile"
           done
-
-      - name: Trigger AWS Lambda Function
-        run: |
-          aws lambda invoke --function-name compare-files --payload '{}' response.json
-          cat response.json
