@@ -1,59 +1,51 @@
 <header>
 
-# Hello GitHub Actions
+# EC2 Automation Workflow
 
-_Create and run a GitHub Actions workflow._
+## Overview
+This GitHub Actions workflow automates the process of running a PowerShell script on EC2 instances, collecting output, and uploading it to an S3 bucket. Below is a step-by-step explanation of each process.
 
-</header>
+## Explanation of Each Step
 
-## Step 1: Create a workflow file
+### 1. Checkout Repository
+- Fetches the repository code from GitHub.
+- Ensures that all scripts and configuration files are available for execution.
 
-_Welcome to "Hello GitHub Actions"! :wave:_
+### 2. Set up AWS CLI Profile
+- Configures AWS CLI without hardcoding secrets directly in the YAML file.
+- Uses an AWS profile for authentication instead of GitHub Secrets.
+- Creates necessary AWS configuration files to allow CLI operations.
 
-**What is _GitHub Actions_?**: GitHub Actions is a flexible way to automate nearly every aspect of your team's software workflow. You can automate testing, continuously deploy, review code, manage issues and pull requests, and much more. The best part, these workflows are stored as code in your repository and easily shared and reused across teams. To learn more, check out these resources:
+### 3. Install AWS CLI & jq
+- Installs AWS CLI to interact with AWS services.
+- Installs `jq` for processing JSON output from AWS CLI commands.
+- Ensures dependencies are available for automation.
 
-- The GitHub Actions feature page, see [GitHub Actions](https://github.com/features/actions).
-- The "GitHub Actions" user documentation, see [GitHub Actions](https://docs.github.com/actions).
+### 4. Get EC2 Public IPs
+- Reads instance IDs from `server_list.txt`.
+- Uses AWS CLI to fetch the public IP addresses of the instances.
+- Stores the retrieved IPs in an environment variable for later use.
 
-**What is a _workflow_?**: A workflow is a configurable automated process that will run one or more jobs. Workflows are defined in special files in the `.github/workflows` directory and they execute based on your chosen event. For this exercise, we'll use a `pull_request` event.
+### 5. Set up SSH Key for EC2 Access
+- Retrieves the private SSH key stored in GitHub Secrets.
+- Saves the key as a file and sets the correct permissions.
+- Allows secure SSH connections to EC2 instances.
 
-- To read more about workflows, jobs, and events, see "[Understanding GitHub Actions](https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions)".
-- If you want to learn more about the `pull_request` event before using it, see "[pull_request](https://docs.github.com/en/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#pull_request)".
+### 6. Execute PowerShell Script on EC2
+- Establishes an SSH connection to each EC2 instance.
+- Executes `script.ps1`, which runs a shell script (`command.sh`) on the instance.
+- Ensures the script runs successfully and produces the expected output.
 
-To get you started, we ran an Actions workflow in your new repository that, among other things, created a branch for you to work in, called `welcome-workflow`.
+### 7. Upload Output to S3
+- Retrieves the generated output files from the EC2 instances.
+- Uses AWS CLI to upload the output files to a specified S3 bucket.
+- Ensures that the output is stored safely for further processing or analysis.
 
-### :keyboard: Activity: Create a workflow file
+## Next Steps
+- Make sure your AWS credentials and secrets are configured correctly.
+- Ensure EC2 instances allow SSH access from the GitHub Actions runner.
+- Verify that your S3 bucket is properly configured to receive uploads.
 
-1. Open a new browser tab, and navigate to this same repository. Then, work on the steps in your second tab while you read the instructions in this tab.
-1. Create a pull request. This will contain all of the changes you'll make throughout this part of the course.
-
-   Click the **Pull Requests** tab, click **New pull request**, set `base: main` and `compare:welcome-workflow`, click **Create pull request**, then click **Create pull request** again.
-
-1. Navigate to the **Code** tab.
-1. From the **main** branch dropdown, click on the **welcome-workflow** branch.
-1. Navigate to the `.github/workflows/` folder, then select **Add file** and click on **Create new file**.
-1. In the **Name your file** field, enter `welcome.yml`.
-1. Add the following content to the `welcome.yml` file:
-
-   ```yaml copy
-   name: Post welcome comment
-   on:
-     pull_request:
-       types: [opened]
-   permissions:
-     pull-requests: write
-   ```
-
-1. To commit your changes, click **Commit changes**.
-1. Type a commit message, select **Commit directly to the welcome-workflow branch** and click **Commit changes**.
-1. Wait about 20 seconds, then refresh this page (the one you're following instructions from). A separate Actions workflow in the repository (not the workflow you created) will run and will automatically replace the contents of this README file with instructions for the next step.
-
-<footer>
-
----
-
-Get help: [Post in our discussion board](https://github.com/orgs/skills/discussions/categories/hello-github-actions) &bull; [Review the GitHub status page](https://www.githubstatus.com/)
-
-&copy; 2023 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
+This workflow helps automate EC2 operations, making it more efficient and secure.
 
 </footer>
